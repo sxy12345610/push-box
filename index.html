@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>推箱子</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            font-family: Arial, sans-serif;
+        }
+        h1 {
+            color: white;
+            margin-bottom: 20px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+        #game-container {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+        }
+        #game-canvas {
+            border: 2px solid #333;
+        }
+        .controls {
+            margin-top: 20px;
+            color: white;
+            text-align: center;
+        }
+        .btn {
+            margin-top: 15px;
+            padding: 10px 30px;
+            font-size: 16px;
+            background: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        .btn:hover {
+            background: #45a049;
+        }
+        #win-message {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: white;
+            padding: 40px;
+            border-radius: 10px;
+            text-align: center;
+            box-shadow: 0 10px 60px rgba(0,0,0,0.5);
+            z-index: 100;
+        }
+        #win-message h2 {
+            color: #4CAF50;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <h1>🎮 推箱子</h1>
+    <div id="game-container">
+        <canvas id="game-canvas"></canvas>
+    </div>
+    <div class="controls">
+        <p>使用方向键 ↑ ↓ ← → 移动</p>
+        <button class="btn" onclick="resetGame()">重新开始</button>
+    </div>
+    <div id="win-message">
+        <h2>🎉 恭喜通关！</h2>
+        <button class="btn" onclick="resetGame()">再玩一次</button>
+    </div>
+
+    <script>
+        const TILE_SIZE = 60;
+        const COLS = 5;
+        const ROWS = 5;
+
+        let level = [];
+        let playerPos = { x: 0, y: 0 };
+        let boxPos = { x: 0, y: 0 };
+        let targetPos = { x: 0, y: 0 };
+
+        const canvas = document.getElementById('game-canvas');
+        const ctx = canvas.getContext('2d');
+        canvas.width = COLS * TILE_SIZE;
+        canvas.height = ROWS * TILE_SIZE;
+
+        function initLevel() {
+            level = [
+                [1, 1, 1, 1, 1],
+                [1, 2, 0, 0, 1],
+                [1, 0, 3, 0, 1],
+                [1, 0, 4, 0, 1],
+                [1, 1, 1, 1, 1]
+            ];
+            playerPos = { x: 1, y: 1 };
+            boxPos = { x: 2, y: 2 };
+            targetPos = { x: 2, y: 3 };
+        }
+
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            for (let y = 0; y < ROWS; y++) {
+                for (let x = 0; x < COLS; x++) {
+                    const tile = level[y][x];
+                    const px = x * TILE_SIZE;
+                    const py = y * TILE_SIZE;
+                    
+                    ctx.fillStyle = tile === 1 ? '#333333' : '#FFFFFF';
+                    ctx.fillRect(px, py, TILE_SIZE, TILE_SIZE);
+                    
+                    ctx.strokeStyle = '#999999';
+                    ctx.strokeRect(px, py, TILE_SIZE, TILE_SIZE);
+                    
+                    const centerX = px + TILE_SIZE / 2;
+                    const centerY = py + TILE_SIZE / 2;
+                    
+                    if (tile === 2) {
+                        ctx.fillStyle = '#2196F3';
+                        ctx.beginPath();
+                        ctx.arc(centerX, centerY, TILE_SIZE / 3, 0, Math.PI * 2);
+                        ctx.fill();
+                    } else if (tile === 3) {
+                        ctx.fillStyle = '#FF9800';
+                        ctx.fillRect(px + 5, py + 5, TILE_SIZE - 10, TILE_SIZE - 10);
+                    } else if (tile === 4) {
+                        ctx.fillStyle = '#F44336';
+                        ctx.beginPath();
+                        ctx.arc(centerX, centerY, TILE_SIZE / 4, 0, Math.PI * 2);
+                        ctx.fill();
+                    }
+                }
+            }
+        }
+
+        function move(dx, dy) {
+            const nx = playerPos.x + dx;
+            const ny = playerPos.y + dy;
+            
+            if (level[ny][nx] === 1) return;
+            
+            if (level[ny][nx] === 3) {
+                const bx = nx + dx;
+                const by = ny + dy;
+                
+                if (level[by][bx] !== 1 && level[by][bx] !== 3) {
+                    level[ny][nx] = 0;
+                    level[by][bx] = 3;
+                    boxPos = { x: bx, y: by };
+                    
+                    level[playerPos.y][playerPos.x] = 0;
+                    level[ny][nx] = 2;
+                    playerPos = { x: nx, y: ny };
+                    
+                    if (boxPos.x === targetPos.x && boxPos.y === targetPos.y) {
+                        setTimeout(showWin, 100);
+                    }
+                    return;
+                }
+                return;
+            }
+            
+            if (level[ny][nx] === 0 || level[ny][nx] === 4) {
+                level[playerPos.y][playerPos.x] = 0;
+                level[ny][nx] = 2;
+                playerPos = { x: nx, y: ny };
+            }
+        }
+
+        function showWin() {
+            document.getElementById('win-message').style.display = 'block';
+        }
+
+        function resetGame() {
+            document.getElementById('win-message').style.display = 'none';
+            initLevel();
+            draw();
+        }
+
+        document.addEventListener('keydown', (e) => {
+            switch(e.key) {
+                case 'ArrowUp':
+                    e.preventDefault();
+                    move(0, -1);
+                    break;
+                case 'ArrowDown':
+                    e.preventDefault();
+                    move(0, 1);
+                    break;
+                case 'ArrowLeft':
+                    e.preventDefault();
+                    move(-1, 0);
+                    break;
+                case 'ArrowRight':
+                    e.preventDefault();
+                    move(1, 0);
+                    break;
+            }
+            draw();
+        });
+
+        initLevel();
+        draw();
+    </script>
+</body>
+</html>
